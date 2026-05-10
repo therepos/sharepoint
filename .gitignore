@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Local data — never commit
+*.db
+*.db-journal
+*.xlsx
+!**/seed/*.xlsx
+data/
+output/
+
+# Environment
+.env
+*.local
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build
+build/
+dist/
+*.spec
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker
+.docker-cache/

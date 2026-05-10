@@ -1,0 +1,15 @@
+services:
+  cvgen:
+    image: ghcr.io/therepos/cvgen:latest
+    container_name: cvgen
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    volumes:
+      - /mnt/sec/apps/cvgen/data:/app/data
+      - /mnt/sec/apps/cvgen/config:/app/config
+      - /mnt/sec/apps/cvgen/templates:/app/templates
+    environment:
+      - CVGEN_USERNAME=${CVGEN_USERNAME:-admin}
+      - CVGEN_PASSWORD=${CVGEN_PASSWORD}
+      - TZ=Asia/Singapore
