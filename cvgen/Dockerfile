@@ -23,7 +23,8 @@ EXPOSE 8501
 ENV CVGEN_DATA_DIR=/app/data \
     CVGEN_CONFIG_DIR=/app/config \
     CVGEN_TEMPLATES_DIR=/app/templates \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
