@@ -24,6 +24,20 @@ TABLES = {
                "gender", "dob", "country_of_birth"],
 }
 
+# Columns that are NOT NULL without a default in the schema. Bulk import must
+# refuse to insert rows where any of these is unmapped or empty, otherwise
+# SQLite raises an opaque NOT NULL constraint failure.
+REQUIRED_COLS = {
+    "personnel": ["personnel_id", "full_name"],
+    "education": ["education_id", "personnel_id", "course_name"],
+    "certifications": ["certification_id", "personnel_id", "name"],
+    "employment": ["employment_id", "personnel_id", "company"],
+    "projects": ["project_id", "client_name", "project_name"],
+    "assignments": ["personnel_id", "project_id"],
+    "pii": ["personnel_id"],
+    "family": ["family_id", "personnel_id", "family_member_name"],
+}
+
 
 def render():
     st.title("Bulk Import")
@@ -31,7 +45,10 @@ def render():
 
     table = st.selectbox("Target table", list(TABLES.keys()))
     expected_cols = TABLES[table]
+    required_cols = REQUIRED_COLS.get(table, [])
     st.markdown(f"**Expected columns:** `{', '.join(expected_cols)}`")
+    if required_cols:
+        st.markdown(f"**Required (NOT NULL):** `{', '.join(required_cols)}`")
 
     uploaded = st.file_uploader("Upload CSV or Excel", type=["csv", "xlsx", "xls"])
     if not uploaded:
@@ -73,8 +90,17 @@ def render():
     )
 
     if st.button("Import", type="primary"):
+        unmapped_required = [c for c in required_cols if mapping.get(c) == "(skip)"]
+        if unmapped_required:
+            st.error(
+                f"Required column(s) not mapped: {', '.join(unmapped_required)}. "
+                f"Map every NOT NULL column to a source column before importing."
+            )
+            return
+
         # Build mapped DataFrame
         rows_to_insert = []
+        skipped_missing_required = 0
         for _, row in df.iterrows():
             data = {}
             for col, src in mapping.items():
@@ -85,8 +111,18 @@ def render():
                 if isinstance(val, str):
                     val = val.strip()
                 data[col] = val
-            if any(v not in ("", None) for v in data.values()):
-                rows_to_insert.append(data)
+            if not any(v not in ("", None) for v in data.values()):
+                continue
+            if any(data.get(c) in ("", None) for c in required_cols):
+                skipped_missing_required += 1
+                continue
+            rows_to_insert.append(data)
+
+        if skipped_missing_required:
+            st.warning(
+                f"Skipped {skipped_missing_required} row(s) with empty required field(s): "
+                f"{', '.join(required_cols)}."
+            )
 
         if not rows_to_insert:
             st.error("No data to import.")
