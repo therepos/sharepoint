@@ -255,9 +255,17 @@ def _render_pii_section(personnel_id: str):
                               index=["", "Y", "N"].index(record.get("pr_status") or ""))
             fin = st.selectbox("FIN holder", ["", "Y", "N"],
                                index=["", "Y", "N"].index(record.get("fin_holder") or ""))
-            citizenship = st.text_input("Citizenship", value=record["citizenship"])
+            citizenship = _dropdown_with_add(
+                "Citizenship", record["citizenship"],
+                _distinct_pii_values("citizenship"),
+                key_prefix=f"pii_cit_{personnel_id}",
+            )
         with c2:
-            pob = st.text_input("Place of birth", value=record["place_of_birth"])
+            pob = _dropdown_with_add(
+                "Place of birth", record["place_of_birth"],
+                _distinct_pii_values("place_of_birth"),
+                key_prefix=f"pii_pob_{personnel_id}",
+            )
             dob_default = _parse_yyyymmdd(record.get("dob"))
             dob_picked = st.date_input(
                 "Date of birth",
@@ -266,8 +274,16 @@ def _render_pii_section(personnel_id: str):
                 max_value=date.today(),
                 format="YYYY-MM-DD",
             )
-            designation = st.text_input("Designation", value=record["designation"])
-            company = st.text_input("Company", value=record["company"])
+            designation = _dropdown_with_add(
+                "Designation", record["designation"],
+                _distinct_pii_values("designation"),
+                key_prefix=f"pii_desig_{personnel_id}",
+            )
+            company = _dropdown_with_add(
+                "Company", record["company"],
+                _distinct_pii_values("company"),
+                key_prefix=f"pii_co_{personnel_id}",
+            )
 
         c1, c2, _ = st.columns([1, 1, 4])
         with c1:
@@ -445,3 +461,39 @@ def _format_yyyymmdd(d: date | None) -> str:
     if not d:
         return ""
     return f"{d.year:04d}{d.month:02d}{d.day:02d}"
+
+
+# ---------------------------------------------------------------------------
+# Dropdown-with-add helpers (for free-form fields with reusable values)
+# ---------------------------------------------------------------------------
+def _distinct_pii_values(column: str) -> list[str]:
+    rows = db.fetch_all(
+        f"SELECT DISTINCT {column} AS v FROM pii "
+        f"WHERE {column} IS NOT NULL AND {column} != '' ORDER BY {column}"
+    )
+    return [r["v"] for r in rows]
+
+
+def _dropdown_with_add(label: str, current: str, options: list[str], key_prefix: str) -> str:
+    """Selectbox of existing values + always-visible 'add new' text input.
+
+    Form-safe: works inside st.form (no rerun-on-change required).
+    The new-value box wins if the user typed anything in it.
+    """
+    current = (current or "").strip()
+    merged: list[str] = []
+    for v in options:
+        if v and v not in merged:
+            merged.append(v)
+    if current and current not in merged:
+        merged.insert(0, current)
+    if not merged:
+        merged = [""]
+    default_idx = merged.index(current) if current in merged else 0
+
+    selected = st.selectbox(label, merged, index=default_idx, key=f"{key_prefix}_select")
+    new_val = st.text_input(
+        f"➕ Add new {label.lower()}", value="", key=f"{key_prefix}_new",
+        placeholder="Type here to override the dropdown",
+    )
+    return new_val.strip() if new_val.strip() else selected
