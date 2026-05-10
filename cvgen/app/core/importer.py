@@ -22,6 +22,19 @@ SHEET_TO_TABLE = {
 # Columns to ignore from Excel (helper columns added for visual lookup)
 IGNORE_COLS = {"staff_name", "client_name", "project_name", "years"}
 
+# Columns that are NOT NULL without a default in the schema. Rows missing any
+# of these are skipped rather than letting SQLite raise an opaque error.
+REQUIRED_COLS = {
+    "personnel": ["personnel_id", "full_name"],
+    "education": ["education_id", "personnel_id", "course_name"],
+    "certifications": ["certification_id", "personnel_id", "name"],
+    "employment": ["employment_id", "personnel_id", "company"],
+    "projects": ["project_id", "client_name", "project_name"],
+    "assignments": ["personnel_id", "project_id"],
+    "pii": ["personnel_id"],
+    "family": ["family_id", "personnel_id", "family_member_name"],
+}
+
 
 def seed_from_excel(xlsx_path: Path):
     """Read all known sheets from xlsx and insert into SQLite. Replaces existing rows on conflict."""
@@ -49,8 +62,10 @@ def seed_from_excel(xlsx_path: Path):
         pk_col = _pk_column(table)
         rows = [r for r in rows if r.get(pk_col) or table == "assignments"]
 
+        required = REQUIRED_COLS.get(table, [])
         success = 0
         errors = []
+        skipped = 0
         for r in rows:
             # Convert empty strings to None for nullable cols, strip
             cleaned = {}
@@ -60,6 +75,9 @@ def seed_from_excel(xlsx_path: Path):
                 if v == "":
                     v = None
                 cleaned[k] = v
+            if any(cleaned.get(c) in ("", None) for c in required):
+                skipped += 1
+                continue
             try:
                 cols = ", ".join(cleaned.keys())
                 placeholders = ", ".join("?" for _ in cleaned)
@@ -69,7 +87,7 @@ def seed_from_excel(xlsx_path: Path):
             except Exception as e:
                 errors.append((cleaned, str(e)))
 
-        print(f"  {table}: {success} ok, {len(errors)} errors")
+        print(f"  {table}: {success} ok, {len(errors)} errors, {skipped} skipped (missing required)")
         for r, err in errors[:5]:
             print(f"    ! {err}: {r}")
 
