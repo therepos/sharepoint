@@ -4,7 +4,7 @@ services:
     container_name: cvgen
     restart: unless-stopped
     ports:
-      - "8501:8501"
+      - "3029:8501"
     volumes:
       - /mnt/sec/apps/cvgen/data:/app/data
       - /mnt/sec/apps/cvgen/config:/app/config
