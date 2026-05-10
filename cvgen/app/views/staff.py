@@ -36,21 +36,89 @@ def render():
         st.info("No staff found.")
         return
 
-    st.caption(f"{len(df)} staff")
-    for _, row in df.iterrows():
-        c1, c2, c3, c4 = st.columns([1, 3, 3, 1])
+    st.caption(f"{len(df)} staff — tick rows to select, then Edit / Delete")
+
+    display_df = df[["personnel_id", "full_name", "alias_name", "position", "department"]].copy()
+    display_df = display_df.rename(columns={
+        "personnel_id": "ID",
+        "full_name": "Name",
+        "alias_name": "Alias",
+        "position": "Position",
+        "department": "Department",
+    })
+
+    event = st.dataframe(
+        display_df,
+        use_container_width=True,
+        hide_index=True,
+        on_select="rerun",
+        selection_mode="multi-row",
+        key="staff_table",
+    )
+
+    selected_rows = list(event.selection.rows) if event and event.selection else []
+    selected_ids = [df.iloc[i]["personnel_id"] for i in selected_rows]
+
+    c1, c2, c3, _ = st.columns([1, 1.4, 1.4, 4])
+    with c1:
+        if st.button("Edit", disabled=len(selected_ids) != 1, use_container_width=True):
+            st.session_state["edit_staff_id"] = selected_ids[0]
+            st.rerun()
+    with c2:
+        if st.button(f"🗑️ Delete selected ({len(selected_ids)})",
+                     disabled=not selected_ids, use_container_width=True):
+            st.session_state["confirm_delete_ids"] = selected_ids
+            st.rerun()
+    with c3:
+        if st.button("🗑️ Delete ALL staff", type="secondary", use_container_width=True):
+            st.session_state["confirm_delete_all"] = True
+            st.rerun()
+
+    _render_delete_confirmations()
+
+
+def _render_delete_confirmations():
+    if st.session_state.get("confirm_delete_ids"):
+        ids = st.session_state["confirm_delete_ids"]
+        st.warning(
+            f"Delete {len(ids)} staff record(s)? This also removes their education, "
+            f"certifications, employment, assignments, PII, and family rows (cascade)."
+        )
+        c1, c2, _ = st.columns([1, 1, 5])
         with c1:
-            st.text(row["personnel_id"])
+            if st.button("Confirm delete", type="primary"):
+                for pid in ids:
+                    db.delete("personnel", "personnel_id", pid)
+                del st.session_state["confirm_delete_ids"]
+                st.success(f"Deleted {len(ids)} staff")
+                st.rerun()
         with c2:
-            display = row["full_name"]
-            if row.get("alias_name"):
-                display += f" ({row['alias_name']})"
-            st.text(display)
-        with c3:
-            st.text(f"{row['position']} — {row['department']}")
-        with c4:
-            if st.button("Edit", key=f"edit_{row['personnel_id']}"):
-                st.session_state["edit_staff_id"] = row["personnel_id"]
+            if st.button("Cancel"):
+                del st.session_state["confirm_delete_ids"]
+                st.rerun()
+
+    if st.session_state.get("confirm_delete_all"):
+        st.error(
+            "Delete **ALL** staff records? This wipes personnel and cascades to "
+            "education, certifications, employment, assignments, PII, and family. "
+            "This cannot be undone."
+        )
+        confirm_text = st.text_input(
+            "Type DELETE ALL to confirm", key="confirm_delete_all_text"
+        )
+        c1, c2, _ = st.columns([1, 1, 5])
+        with c1:
+            if st.button("Confirm wipe", type="primary",
+                         disabled=confirm_text != "DELETE ALL"):
+                db.execute("DELETE FROM personnel")
+                del st.session_state["confirm_delete_all"]
+                st.session_state.pop("confirm_delete_all_text", None)
+                st.success("All staff deleted")
+                st.rerun()
+        with c2:
+            if st.button("Cancel", key="cancel_delete_all"):
+                del st.session_state["confirm_delete_all"]
+                st.session_state.pop("confirm_delete_all_text", None)
                 st.rerun()
 
 
