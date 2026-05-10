@@ -13,3 +13,9 @@ services:
       - CVGEN_USERNAME=${CVGEN_USERNAME:-admin}
       - CVGEN_PASSWORD=${CVGEN_PASSWORD}
       - TZ=Asia/Singapore
+    # Required so asyncio's socket.socketpair() (used by Streamlit/tornado)
+    # is not blocked by the host seccomp/AppArmor profile — typical on
+    # unprivileged Proxmox LXC and hardened Docker hosts.
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined

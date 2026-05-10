@@ -38,6 +38,25 @@ Open `http://<host-ip>:8501`.
 docker compose pull && docker compose up -d
 ```
 
+## Troubleshooting
+
+### `PermissionError: [Errno 13] Permission denied` on startup (`socket.socketpair`)
+
+Streamlit boots an asyncio event loop, which calls `socket.socketpair()` for its
+internal self-pipe. On hardened hosts (unprivileged Proxmox LXC, restrictive
+seccomp/AppArmor profiles) this syscall is denied and the container exits.
+
+The provided `docker-compose.yml` already sets `security_opt: seccomp=unconfined`
+and `apparmor=unconfined` to work around this.
+
+If you're running inside an **unprivileged Proxmox LXC**, also enable nesting
+on the LXC itself (on the Proxmox host):
+
+```bash
+pct set <vmid> -features nesting=1,keyctl=1
+pct restart <vmid>
+```
+
 ## First-time data seeding
 
 If you have an existing Excel database (`personnel_database.xlsx`):
