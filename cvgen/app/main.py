@@ -1,5 +1,13 @@
 """cvgen — main entry point with auth gate."""
 import os
+import sys
+
+# `streamlit run app/main.py` puts /app/app on sys.path (the script's dir),
+# not /app, so `from app.config import ...` fails. Make the package importable
+# regardless of how this file is launched.
+_PKG_PARENT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PKG_PARENT not in sys.path:
+    sys.path.insert(0, _PKG_PARENT)
 
 import streamlit as st
 
