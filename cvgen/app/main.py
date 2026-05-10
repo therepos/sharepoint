@@ -84,31 +84,31 @@ def main():
 
     # Lazy-import the page module so startup is fast
     if page == "Staff":
-        from app.pages import staff
+        from app.views import staff
         staff.render()
     elif page == "Projects":
-        from app.pages import projects
+        from app.views import projects
         projects.render()
     elif page == "Assignments":
-        from app.pages import assignments
+        from app.views import assignments
         assignments.render()
     elif page == "PII":
-        from app.pages import pii
+        from app.views import pii
         pii.render()
     elif page == "Family":
-        from app.pages import family
+        from app.views import family
         family.render()
     elif page == "Templates":
-        from app.pages import templates
+        from app.views import templates
         templates.render()
     elif page == "Generate":
-        from app.pages import generate
+        from app.views import generate
         generate.render()
     elif page == "Bulk Import":
-        from app.pages import bulk_import
+        from app.views import bulk_import
         bulk_import.render()
     elif page == "Settings":
-        from app.pages import settings
+        from app.views import settings
         settings.render()
 
 
