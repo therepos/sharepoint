@@ -246,52 +246,59 @@ def _render_pii_section(personnel_id: str):
             "designation": "", "company": "Ernst & Young Advisory Pte Ltd",
         }
 
-    with st.form(f"pii_form_{personnel_id}"):
-        c1, c2 = st.columns(2)
-        with c1:
-            nric = st.text_input("NRIC / Passport", value=record["nric_passport"])
-            other_id = st.text_input("Other ID", value=record["other_id"])
-            pr = st.selectbox("PR status", ["", "Y", "N"],
-                              index=["", "Y", "N"].index(record.get("pr_status") or ""))
-            fin = st.selectbox("FIN holder", ["", "Y", "N"],
-                               index=["", "Y", "N"].index(record.get("fin_holder") or ""))
-            citizenship = _dropdown_with_add(
-                "Citizenship", record["citizenship"],
-                _distinct_pii_values("citizenship"),
-                key_prefix=f"pii_cit_{personnel_id}",
-            )
-        with c2:
-            pob = _dropdown_with_add(
-                "Place of birth", record["place_of_birth"],
-                _distinct_pii_values("place_of_birth"),
-                key_prefix=f"pii_pob_{personnel_id}",
-            )
-            dob_default = _parse_yyyymmdd(record.get("dob"))
-            dob_picked = st.date_input(
-                "Date of birth",
-                value=dob_default,
-                min_value=date(1900, 1, 1),
-                max_value=date.today(),
-                format="YYYY-MM-DD",
-            )
-            designation = _dropdown_with_add(
-                "Designation", record["designation"],
-                _distinct_pii_values("designation"),
-                key_prefix=f"pii_desig_{personnel_id}",
-            )
-            company = _dropdown_with_add(
-                "Company", record["company"],
-                _distinct_pii_values("company"),
-                key_prefix=f"pii_co_{personnel_id}",
-            )
+    # No st.form wrapper here: dropdowns need to rerun-on-change so the
+    # "Add new…" option can immediately reveal a text input.
+    c1, c2 = st.columns(2)
+    with c1:
+        nric = st.text_input("NRIC / Passport", value=record["nric_passport"],
+                              key=f"pii_nric_{personnel_id}")
+        other_id = st.text_input("Other ID", value=record["other_id"],
+                                  key=f"pii_other_{personnel_id}")
+        pr = st.selectbox("PR status", ["", "Y", "N"],
+                          index=["", "Y", "N"].index(record.get("pr_status") or ""),
+                          key=f"pii_pr_{personnel_id}")
+        fin = st.selectbox("FIN holder", ["", "Y", "N"],
+                           index=["", "Y", "N"].index(record.get("fin_holder") or ""),
+                           key=f"pii_fin_{personnel_id}")
+        citizenship = _dropdown_with_add(
+            "Citizenship", record["citizenship"],
+            _distinct_pii_values("citizenship"),
+            key_prefix=f"pii_cit_{personnel_id}",
+        )
+    with c2:
+        pob = _dropdown_with_add(
+            "Place of birth", record["place_of_birth"],
+            _distinct_pii_values("place_of_birth"),
+            key_prefix=f"pii_pob_{personnel_id}",
+        )
+        dob_default = _parse_yyyymmdd(record.get("dob"))
+        dob_picked = st.date_input(
+            "Date of birth",
+            value=dob_default,
+            min_value=date(1900, 1, 1),
+            max_value=date.today(),
+            format="YYYY-MM-DD",
+            key=f"pii_dob_{personnel_id}",
+        )
+        designation = _dropdown_with_add(
+            "Designation", record["designation"],
+            _distinct_pii_values("designation"),
+            key_prefix=f"pii_desig_{personnel_id}",
+        )
+        company = _dropdown_with_add(
+            "Company", record["company"],
+            _distinct_pii_values("company"),
+            key_prefix=f"pii_co_{personnel_id}",
+        )
 
-        c1, c2, _ = st.columns([1, 1, 4])
-        with c1:
-            save = st.form_submit_button("Save PII", type="primary")
-        with c2:
-            delete_btn = st.form_submit_button(
-                "🗑️ Delete PII", type="secondary", disabled=is_new_pii
-            )
+    c1, c2, _ = st.columns([1, 1, 4])
+    with c1:
+        save = st.button("Save PII", type="primary", key=f"pii_save_{personnel_id}")
+    with c2:
+        delete_btn = st.button(
+            "🗑️ Delete PII", type="secondary", disabled=is_new_pii,
+            key=f"pii_delete_{personnel_id}",
+        )
 
     if save:
         data = {
@@ -474,11 +481,13 @@ def _distinct_pii_values(column: str) -> list[str]:
     return [r["v"] for r in rows]
 
 
-def _dropdown_with_add(label: str, current: str, options: list[str], key_prefix: str) -> str:
-    """Selectbox of existing values + always-visible 'add new' text input.
+_ADD_NEW_SENTINEL = "➕ Add new…"
 
-    Form-safe: works inside st.form (no rerun-on-change required).
-    The new-value box wins if the user typed anything in it.
+
+def _dropdown_with_add(label: str, current: str, options: list[str], key_prefix: str) -> str:
+    """Selectbox whose last option is "➕ Add new…"; picking it reveals a
+    text input below for the new value. Must be used outside st.form so
+    selection changes trigger a rerun.
     """
     current = (current or "").strip()
     merged: list[str] = []
@@ -490,10 +499,13 @@ def _dropdown_with_add(label: str, current: str, options: list[str], key_prefix:
     if not merged:
         merged = [""]
     default_idx = merged.index(current) if current in merged else 0
+    choices = merged + [_ADD_NEW_SENTINEL]
 
-    selected = st.selectbox(label, merged, index=default_idx, key=f"{key_prefix}_select")
-    new_val = st.text_input(
-        f"➕ Add new {label.lower()}", value="", key=f"{key_prefix}_new",
-        placeholder="Type here to override the dropdown",
-    )
-    return new_val.strip() if new_val.strip() else selected
+    selected = st.selectbox(label, choices, index=default_idx, key=f"{key_prefix}_select")
+    if selected == _ADD_NEW_SENTINEL:
+        new_val = st.text_input(
+            f"New {label.lower()}", value="", key=f"{key_prefix}_new",
+            placeholder=f"Type new {label.lower()} and click Save",
+        )
+        return new_val.strip()
+    return selected
