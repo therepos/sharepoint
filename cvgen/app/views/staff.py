@@ -139,7 +139,7 @@ def _render_edit_form(personnel_id: str):
             "full_name": "", "alias_name": "", "nationality": "",
             "position": "Senior Consultant", "department": "Risk Consulting",
             "role": "Team member", "start_year": 2025,
-            "active": "Yes", "generate": "No", "notes": "",
+            "active": "Yes", "notes": "",
         }
     else:
         record = db.fetch_one("SELECT * FROM personnel WHERE personnel_id = ?", (personnel_id,))
@@ -188,8 +188,6 @@ def _render_profile_form(record: dict, is_new: bool):
                                           value=int(record.get("start_year") or 2025))
             active = st.selectbox("Active", ["Yes", "No"],
                                   index=0 if record.get("active") == "Yes" else 1)
-            generate = st.selectbox("Generate Annex E", ["Yes", "No"],
-                                     index=0 if record.get("generate") == "Yes" else 1)
         notes = st.text_area("Notes", value=record.get("notes", ""))
 
         c1, c2, c3 = st.columns([1, 1, 3])
@@ -207,7 +205,7 @@ def _render_profile_form(record: dict, is_new: bool):
         data = {
             "full_name": full_name, "alias_name": alias_name, "nationality": nationality,
             "position": position, "department": department, "role": role,
-            "start_year": start_year, "active": active, "generate": generate, "notes": notes,
+            "start_year": start_year, "active": active, "notes": notes,
         }
         if is_new:
             data["personnel_id"] = personnel_id_val
