@@ -43,14 +43,22 @@ def render():
     st.subheader(f"Available templates ({len(files)})")
     for f in files:
         with st.expander(f.name):
-            c1, c2, c3 = st.columns([2, 1, 1])
+            c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
             with c1:
                 size_kb = f.stat().st_size // 1024
                 st.caption(f"{size_kb} KB")
             with c2:
+                st.download_button(
+                    "⬇️ Download",
+                    data=f.read_bytes(),
+                    file_name=f.name,
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    key=f"dl_{f.name}",
+                )
+            with c3:
                 if st.button("Validate", key=f"val_{f.name}"):
                     _validate_and_show(f)
-            with c3:
+            with c4:
                 if st.button("🗑️ Delete", key=f"del_{f.name}", type="secondary"):
                     f.unlink()
                     st.rerun()

@@ -65,9 +65,6 @@ def main():
         [
             "Staff",
             "Projects",
-            "Assignments",
-            "PII",
-            "Family",
             "Templates",
             "Generate",
             "Bulk Import",
@@ -89,15 +86,6 @@ def main():
     elif page == "Projects":
         from app.views import projects
         projects.render()
-    elif page == "Assignments":
-        from app.views import assignments
-        assignments.render()
-    elif page == "PII":
-        from app.views import pii
-        pii.render()
-    elif page == "Family":
-        from app.views import family
-        family.render()
     elif page == "Templates":
         from app.views import templates
         templates.render()
